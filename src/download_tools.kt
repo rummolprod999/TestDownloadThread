@@ -23,7 +23,7 @@ fun downloadFromUrl(urls: String, i: Int = 5, wt: Long = 3000): String {
             val task = { downloadWaitWithRef(urls) }
             val future = executor.submit(task)
             try {
-                s = future.get(60, TimeUnit.SECONDS)
+                s = future.get(10, TimeUnit.SECONDS)
             } catch (ex: TimeoutException) {
                 throw ex
             } catch (ex: InterruptedException) {
@@ -32,12 +32,19 @@ fun downloadFromUrl(urls: String, i: Int = 5, wt: Long = 3000): String {
                 throw ex
             } finally {
                 future.cancel(true)
-                executor.shutdown()
+                if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
+                    executor.shutdownNow()
+                    if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
+                        println("Pool did not terminate")
+
+                    }
+                }
+
             }
             return s
 
         } catch (e: Exception) {
-            println(e.stackTrace)
+            println(e)
             count++
             sleep(wt)
         }
@@ -71,6 +78,7 @@ fun downloadWaitWithRef(urls: String): String {
     val s = StringBuilder()
     val url = URL(urls)
     val uc = url.openConnection()
+    uc.connectTimeout = 5000
     uc.connect()
     val `is`: InputStream = uc.getInputStream()
     val br = BufferedReader(InputStreamReader(`is`))
@@ -118,7 +126,7 @@ fun downloadFromUrl1251(urls: String, i: Int = 5): String {
             return s
 
         } catch (e: Exception) {
-            println(e.stackTrace)
+            println(e)
             count++
             sleep(5000)
         }
